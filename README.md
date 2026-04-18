@@ -2,9 +2,11 @@
 
 A skin for LiveSplit implemented using web technologies.
 
+![image](./docs/image.png)
+
 # Usage
 
-Download skin html (index.html) and the LiveSplit JSON server (JSONServer.dll).
+Download skin html (index.html) and the LiveSplit JSON server (JSONServer.dll) from [releases page](https://github.com/JaroslawPokropinski/live-split-skin/releases/latest).
 
 Place index.html in an accessible location eg. in documents `.../documents/livesplitskin/index.html`.
 
