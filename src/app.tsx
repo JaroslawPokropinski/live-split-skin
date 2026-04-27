@@ -63,7 +63,16 @@ export function App() {
         console.error("Failed to connect to LiveSplit:", err);
       });
 
+    // Refresh the site when connection fails
+    const interval = setInterval(() => {
+      if (!newClient.isConnected) {
+        console.warn("Connection failed, reloading the page.");
+        location.reload();
+      }
+    }, 5000);
+
     return () => {
+      clearInterval(interval);
       newClient.destroy();
     };
   }, [serverUrl]);
@@ -72,12 +81,8 @@ export function App() {
   useEffect(() => {
     if (!client) return;
 
-    const handleConnectionChange = (connected: boolean) => {
-      setIsConnected(connected);
-    };
-
     const interval = setInterval(() => {
-      handleConnectionChange(client.isConnected);
+      setIsConnected(client.isConnected);
     }, 30);
 
     return () => {
@@ -101,11 +106,9 @@ export function App() {
           continue;
         }
 
-        const currentTime = lstimerToSeconds(data.currentSplitTime, true);
-
-        const currentOrLastSplitIndex = Math.min(
+        const currentOrLastSplitIndex = Math.max(
           0,
-          Math.max(data.splits.length - 1, data.currentSplitIndex),
+          Math.min(data.splits.length - 1, data.currentSplitIndex),
         );
 
         setRunData({
@@ -114,7 +117,7 @@ export function App() {
           gameIcon: data.gameIcon,
           imagePreview:
             data.gameIcon && renderRichHash(data.gameIcon.split(";")[1]),
-          currentSplitTime: currentTime,
+          currentSplitTime: lstimerToSeconds(data.currentSplitTime),
           delta: lstimerToSeconds(data.splits[currentOrLastSplitIndex]?.delta),
         });
 
@@ -130,6 +133,8 @@ export function App() {
             name,
             time: lstimerToSeconds(split.splitTime),
             pb: lstimerToSeconds(split.pbTime),
+            bestSegmentTime: lstimerToSeconds(split.bestSegmentTime),
+            segmentDelta: lstimerToSeconds(split.segmentDelta),
             diff,
             active: data.currentSplitIndex === idx,
             description: desc,

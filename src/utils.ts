@@ -7,7 +7,7 @@ export function lstimerToSeconds(lstimer: string, fract = true): number {
 
   return (
     parts.reduce((total, part) => total * 60 + part, 0) * sign +
-    (fract ? milis : 0)
+    (fract ? milis * sign : 0)
   );
 }
 

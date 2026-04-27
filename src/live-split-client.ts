@@ -147,6 +147,7 @@ export class LiveSplitClient {
             splitTime: string;
             pbTime: string;
             bestSegmentTime: string;
+            segmentDelta: string;
             delta: string;
             icon?: string;
           }[];

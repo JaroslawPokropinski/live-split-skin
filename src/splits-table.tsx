@@ -8,6 +8,8 @@ export interface Split {
   description: string;
   time: number;
   pb: number;
+  bestSegmentTime: number;
+  segmentDelta: number;
   diff: number;
   icon?: string;
   iconPreview?: string;
@@ -134,16 +136,21 @@ export function SplitsTable({
               </div>
             </div>
             {/* <div className="w-16 text-center font-mono text-foreground">
-              {split.time}
-            </div> */}
+            {split.time}
+          </div> */}
             <div className="w-16 text-center font-mono text-muted-foreground">
               {secondsToTimeString(
-                Number.isNaN(split.pb) ? split.time : split.pb,
+                Number.isNaN(split.bestSegmentTime)
+                  ? split.time
+                  : split.bestSegmentTime,
               )}
             </div>
             <div className="w-16 text-center font-mono font-medium">
-              {split.diff > 0 ? "+" : ""}
-              {secondsToTimeString(split.diff)}
+              {split.segmentDelta > 0 ? "+" : ""}
+              {secondsToTimeString(
+                split.segmentDelta,
+                Math.abs(split.segmentDelta) < 60 ? 1 : 0,
+              )}
             </div>
           </div>
         ))}
