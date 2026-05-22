@@ -1,7 +1,7 @@
 import { SplitsTable, type Split } from "./splits-table";
 import { TimerDisplay } from "./timer";
 import { TimesChart } from "./times-chart";
-import { useEffect, useRef, useState } from "preact/hooks";
+import { useEffect, useMemo, useRef, useState } from "preact/hooks";
 import { LiveSplitClient } from "./live-split-client";
 import { lstimerToSeconds, renderRichHash } from "./utils";
 
@@ -12,11 +12,16 @@ export function IconRenderer({
   img?: string;
   preview?: string;
 }) {
+  const previewImg = useMemo(() => {
+    if (!preview) return;
+    return renderRichHash(preview.split(";")[1]);
+  }, [preview]);
+
   if (!img && !preview) return null;
 
   return (
     <img
-      src={img ?? preview}
+      src={img ?? previewImg}
       alt="Game Icon"
       className={`w-full h-full object-contain [transition: filter 1s ease-in-out] ${!img ? "filter-[blur(4px)]" : ""}`}
     />
@@ -34,6 +39,7 @@ export function App() {
   const [client, setClient] = useState<LiveSplitClient | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const [splitsData, setSplitsData] = useState<Split[]>([]);
+  const [runTime, setRunTime] = useState<number | null>(null);
   const fetchStatusRef = useRef<
     Record<string, "to_fetch" | "fetching" | "fetched">
   >({});
@@ -46,11 +52,11 @@ export function App() {
     gameTitle: string;
     gameCategory: string;
     gameIcon?: string;
-    imagePreview?: string;
-    currentSplitTime: number;
     delta: number;
+    columns: string[];
   } | null>(null);
 
+  // Initialize LiveSplit client and handle connection
   useEffect(() => {
     const newClient = new LiveSplitClient(serverUrl);
     newClient
@@ -115,10 +121,8 @@ export function App() {
           gameTitle: data.gameTitle,
           gameCategory: data.gameCategory,
           gameIcon: data.gameIcon,
-          imagePreview:
-            data.gameIcon && renderRichHash(data.gameIcon.split(";")[1]),
-          currentSplitTime: lstimerToSeconds(data.currentSplitTime),
           delta: lstimerToSeconds(data.splits[currentOrLastSplitIndex]?.delta),
+          columns: data.columns,
         });
 
         const newSplitsData = data.splits.map((split, idx) => {
@@ -139,15 +143,38 @@ export function App() {
             active: data.currentSplitIndex === idx,
             description: desc,
             icon: split.icon,
-            iconPreview: split.icon && renderRichHash(split.icon.split(";")[1]),
+            labels: split.labels ?? {},
           };
         });
 
         setSplitsData(newSplitsData);
 
-        await new Promise((resolve) => setTimeout(resolve, 30));
+        await new Promise((resolve) => setTimeout(resolve, 100));
       }
     })();
+  }, [client]);
+
+  // Fetch run time
+  useEffect(() => {
+    if (!client) return;
+
+    const animationFrame = requestAnimationFrame(function updateRunTime() {
+      client
+        .getRunTime()
+        .then((time) => {
+          setRunTime(lstimerToSeconds(time));
+        })
+        .catch((err) => {
+          console.error("Error fetching run time:", err);
+          setRunTime(null);
+        });
+
+      requestAnimationFrame(updateRunTime);
+    });
+
+    return () => {
+      cancelAnimationFrame(animationFrame);
+    };
   }, [client]);
 
   // Update image hashes set
@@ -219,7 +246,7 @@ export function App() {
             <div className="h-14">
               <IconRenderer
                 img={runData?.gameIcon && iconHashToB64.get(runData.gameIcon)}
-                preview={runData?.imagePreview}
+                preview={runData?.gameIcon}
               />
             </div>
 
@@ -233,14 +260,15 @@ export function App() {
             </div>
           </div>
 
-          <SplitsTable splits={splitsData} iconsMap={iconHashToB64} />
+          <SplitsTable
+            splits={splitsData}
+            iconsMap={iconHashToB64}
+            columns={runData?.columns ?? []}
+          />
 
           <div className="relative mt-2">
             <div className="absolute inset-0 flex items-center justify-center">
-              <TimerDisplay
-                time={runData?.currentSplitTime}
-                diff={runData?.delta}
-              />
+              <TimerDisplay time={runTime} diff={runData?.delta} />
             </div>
 
             <TimesChart

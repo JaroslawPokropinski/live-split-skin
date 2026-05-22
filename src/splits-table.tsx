@@ -1,5 +1,4 @@
 import { useEffect, useRef } from "preact/hooks";
-import { secondsToTimeString } from "./utils";
 import { IconRenderer } from "./app";
 
 export interface Split {
@@ -12,16 +11,24 @@ export interface Split {
   segmentDelta: number;
   diff: number;
   icon?: string;
-  iconPreview?: string;
   active?: boolean;
+  labels: Record<string, { text: string; color?: string | null }>;
 }
+
+const colors: Record<string, string | undefined> = {
+  BestSegment: "#D8AF1F",
+  BehindGainingTime: "#CC5C52",
+  BehindLosingTime: "#CC1200",
+};
 
 export function SplitsTable({
   splits,
   iconsMap,
+  columns,
 }: {
   splits: Split[];
   iconsMap: Map<string, string>;
+  columns: string[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -105,9 +112,12 @@ export function SplitsTable({
     <div className="px-2 grow shrink h-0 flex flex-col">
       <div className="grid grid-cols-[1fr_auto_auto_auto] gap-4 mx-2 py-3 text-sm text-muted-foreground border-b border-border/30">
         <div>Split</div>
-        {/* <div className="w-16 text-center">Time</div> */}
-        <div className="w-16 text-center">PB</div>
-        <div className="w-16 text-center">+/-</div>
+
+        {columns.map((columnName) => (
+          <div key={columnName} className="w-16 text-center">
+            {columnName}
+          </div>
+        ))}
       </div>
       <div ref={containerRef} className="shrink overflow-y-auto no-scrollbar">
         {splits.map((split) => (
@@ -121,7 +131,7 @@ export function SplitsTable({
                 <div className="h-11 rounded-xl shrink-0">
                   <IconRenderer
                     img={split.icon && iconsMap.get(split.icon)}
-                    preview={split.iconPreview}
+                    preview={split.icon}
                   />
                 </div>
               }
@@ -135,23 +145,18 @@ export function SplitsTable({
                 </p>
               </div>
             </div>
-            {/* <div className="w-16 text-center font-mono text-foreground">
-            {split.time}
-          </div> */}
-            <div className="w-16 text-center font-mono text-muted-foreground">
-              {secondsToTimeString(
-                Number.isNaN(split.bestSegmentTime)
-                  ? split.time
-                  : split.bestSegmentTime,
-              )}
-            </div>
-            <div className="w-16 text-center font-mono font-medium">
-              {split.segmentDelta > 0 ? "+" : ""}
-              {secondsToTimeString(
-                split.segmentDelta,
-                Math.abs(split.segmentDelta) < 60 ? 1 : 0,
-              )}
-            </div>
+
+            {Object.entries(split.labels).map(([key, label]) => (
+              <div
+                key={key}
+                className="w-16 text-center font-mono text-muted-foreground text-shadow-2xs"
+                style={{
+                  color: label.color && colors[label.color],
+                }}
+              >
+                {label.text}
+              </div>
+            ))}
           </div>
         ))}
       </div>

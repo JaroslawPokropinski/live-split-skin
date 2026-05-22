@@ -4,11 +4,11 @@ export function TimerDisplay({
   time,
   diff,
 }: {
-  time: number | undefined;
+  time: number | undefined | null;
   diff: number | undefined;
 }) {
-  if (time === undefined) {
-    return <div />;
+  if (time === undefined || time === null) {
+    return null;
   }
 
   const timeString = secondsToTimeString(time, 3);

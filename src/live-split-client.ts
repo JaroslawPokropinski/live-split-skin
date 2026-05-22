@@ -121,20 +121,8 @@ export class LiveSplitClient {
     });
   }
 
-  getRunBase() {
-    return this.send<string>("getrunbaseinfojson", {}, true).then(
-      (data) =>
-        JSON.parse(data) as {
-          gameTitle: string;
-          gameCategory: string;
-          currentSplitTime: string;
-          currentSplitIndex: number;
-        },
-    );
-  }
-
   getRun() {
-    return this.send<string>("getrunjson", {}, true).then(
+    return this.send<string>("getRun", {}, true).then(
       (data) =>
         JSON.parse(data) as {
           gameTitle: string;
@@ -142,6 +130,7 @@ export class LiveSplitClient {
           gameIcon?: string;
           currentSplitTime: string;
           currentSplitIndex: number;
+          columns: string[];
           splits: {
             name: string;
             splitTime: string;
@@ -150,13 +139,24 @@ export class LiveSplitClient {
             segmentDelta: string;
             delta: string;
             icon?: string;
+            labels: Record<
+              string,
+              { text: string; color?: string | null }
+            > | null;
           }[];
         },
     );
   }
 
+  getRunTime() {
+    return this.send<string>("getRunTime", {}, true).then((data) => {
+      const dataJson = JSON.parse(data);
+      return dataJson.currentTime as string;
+    });
+  }
+
   getIcon(hash: string) {
-    return this.send<string>(`geticonjson`, { hash }, true).then((data) => {
+    return this.send<string>(`getIcon`, { hash }, true).then((data) => {
       const b64 = JSON.parse(data).base64Icon as string;
       return `data:image/png;base64,${b64}`;
     });
