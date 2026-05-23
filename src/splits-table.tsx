@@ -1,5 +1,6 @@
 import { useEffect, useRef } from "preact/hooks";
-import { IconRenderer } from "./app";
+import { IconRenderer } from "./icon-renderer";
+import { setAnimationLoop, setSafeInterval } from "./utils";
 
 export interface Split {
   id: number;
@@ -23,11 +24,9 @@ const colors: Record<string, string | undefined> = {
 
 export function SplitsTable({
   splits,
-  iconsMap,
   columns,
 }: {
   splits: Split[];
-  iconsMap: Map<string, string>;
   columns: string[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -36,7 +35,7 @@ export function SplitsTable({
   useEffect(() => {
     let activeSplit: HTMLDivElement | null = null;
 
-    const interval = setInterval(() => {
+    const stopInterval = setSafeInterval(() => {
       activeSplit = (containerRef.current?.querySelector(
         "[data-split-active='true']",
       ) ??
@@ -49,12 +48,10 @@ export function SplitsTable({
     const minSpeed = 0.5; // pixels per millisecond
     const maxSpeed = 2; // pixels per millisecond
 
-    let anim: number;
     let prevTime = performance.now();
 
-    const step = () => {
+    const stopAnimation = setAnimationLoop(() => {
       if (!activeSplit || !containerRef.current) {
-        anim = requestAnimationFrame(step);
         return;
       }
 
@@ -89,22 +86,17 @@ export function SplitsTable({
 
       if (Math.abs(distance) < scrollAbsAmount) {
         container.scrollTo({ top: targetScroll });
-        anim = requestAnimationFrame(step);
         return;
       }
 
       const scrollAmount = Math.sign(distance) * scrollAbsAmount;
 
       container.scrollTop += scrollAmount;
-
-      anim = requestAnimationFrame(step);
-    };
-
-    anim = requestAnimationFrame(step);
+    });
 
     return () => {
-      clearInterval(interval);
-      cancelAnimationFrame(anim);
+      stopInterval();
+      stopAnimation();
     };
   }, []);
 
@@ -127,14 +119,11 @@ export function SplitsTable({
             className={`grid grid-cols-[1fr_auto_auto_auto] gap-4 px-2 py-3 items-center border-b border-border/20 transition-colors ${split.active ? "bg-secondary/50" : ""}`}
           >
             <div className="min-h-11 flex items-center gap-3">
-              {
+              {split.icon && (
                 <div className="h-11 rounded-xl shrink-0">
-                  <IconRenderer
-                    img={split.icon && iconsMap.get(split.icon)}
-                    preview={split.icon}
-                  />
+                  <IconRenderer imgHash={split.icon} />
                 </div>
-              }
+              )}
 
               <div className="min-w-0">
                 <p className="text-foreground font-medium truncate">

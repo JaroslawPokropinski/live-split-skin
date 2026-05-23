@@ -36,7 +36,8 @@ export function secondsToTimeString(seconds: number, fractPlaces = 0): string {
   return timeString;
 }
 
-export function renderRichHash(hashBase64: string, scale: number = 32): string {
+export function renderRichHash(hash: string, scale: number = 32): string {
+  const hashBase64 = hash.split(";")[1];
   try {
     const bytes = Uint8Array.from(atob(hashBase64), (c) => c.charCodeAt(0));
 
@@ -98,4 +99,56 @@ export function renderRichHash(hashBase64: string, scale: number = 32): string {
     console.error("Error rendering icon hash:", err);
     return "";
   }
+}
+
+/**
+ * Create a safe interval by creating timeouts that reschedule themselves, so at most one callback can be running at a time.
+ * Returns a function to clear the interval.
+ * Callback function will be called immediately on setup, and then after each interval.
+ */
+export function setSafeInterval(
+  callback: () => void | Promise<void>,
+  interval: number,
+  minDelay: number = 0,
+): () => void {
+  let previousEndTime: number = 0;
+  let isRunning = true;
+
+  const tick = async () => {
+    if (!isRunning) return;
+
+    try {
+      await callback();
+    } catch (err) {
+      console.error("Error in setSafeInterval callback:", err);
+    }
+
+    const delay = Math.max(minDelay, interval - (Date.now() - previousEndTime));
+    previousEndTime = Date.now();
+
+    window.setTimeout(tick, delay);
+  };
+
+  tick();
+
+  return () => {
+    isRunning = false;
+  };
+}
+
+export function setAnimationLoop(callback: () => void): () => void {
+  let isRunning = true;
+
+  const loop = () => {
+    if (!isRunning) return;
+
+    callback();
+    requestAnimationFrame(loop);
+  };
+
+  loop();
+
+  return () => {
+    isRunning = false;
+  };
 }

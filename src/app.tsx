@@ -1,32 +1,10 @@
 import { SplitsTable, type Split } from "./splits-table";
 import { TimerDisplay } from "./timer";
 import { TimesChart } from "./times-chart";
-import { useEffect, useMemo, useRef, useState } from "preact/hooks";
+import { useEffect, useState } from "preact/hooks";
 import { LiveSplitClient } from "./live-split-client";
-import { lstimerToSeconds, renderRichHash } from "./utils";
-
-export function IconRenderer({
-  img,
-  preview,
-}: {
-  img?: string;
-  preview?: string;
-}) {
-  const previewImg = useMemo(() => {
-    if (!preview) return;
-    return renderRichHash(preview.split(";")[1]);
-  }, [preview]);
-
-  if (!img && !preview) return null;
-
-  return (
-    <img
-      src={img ?? previewImg}
-      alt="Game Icon"
-      className={`w-full h-full object-contain [transition: filter 1s ease-in-out] ${!img ? "filter-[blur(4px)]" : ""}`}
-    />
-  );
-}
+import { lstimerToSeconds, setAnimationLoop, setSafeInterval } from "./utils";
+import { IconRenderer, ImageProvider } from "./icon-renderer";
 
 export function App() {
   const [serverUrl] = useState(() => {
@@ -40,13 +18,6 @@ export function App() {
   const [isConnected, setIsConnected] = useState(false);
   const [splitsData, setSplitsData] = useState<Split[]>([]);
   const [runTime, setRunTime] = useState<number | null>(null);
-  const fetchStatusRef = useRef<
-    Record<string, "to_fetch" | "fetching" | "fetched">
-  >({});
-
-  const [iconHashToB64, setIconHashToBase64] = useState(
-    new Map<string, string>(),
-  );
 
   const [runData, setRunData] = useState<{
     gameTitle: string;
@@ -100,65 +71,60 @@ export function App() {
   useEffect(() => {
     if (!client) return;
 
-    (async () => {
-      while (true) {
-        const data = await client.getRun().catch((err) => {
-          console.error("Error fetching run data:", err);
-          return null;
-        });
+    return setSafeInterval(async () => {
+      const data = await client.getRun().catch((err) => {
+        console.error("Error fetching run data:", err);
+        return null;
+      });
 
-        if (!data) {
-          await new Promise((resolve) => setTimeout(resolve, 1000));
-          continue;
-        }
-
-        const currentOrLastSplitIndex = Math.max(
-          0,
-          Math.min(data.splits.length - 1, data.currentSplitIndex),
-        );
-
-        setRunData({
-          gameTitle: data.gameTitle,
-          gameCategory: data.gameCategory,
-          gameIcon: data.gameIcon,
-          delta: lstimerToSeconds(data.splits[currentOrLastSplitIndex]?.delta),
-          columns: data.columns,
-        });
-
-        const newSplitsData = data.splits.map((split, idx) => {
-          const name = split.name.split("|")[0].trim();
-          const desc = split.name.split("|")[1]?.trim() ?? "";
-
-          const diff =
-            data.currentSplitIndex > idx ? lstimerToSeconds(split.delta) : NaN;
-
-          return {
-            id: idx,
-            name,
-            time: lstimerToSeconds(split.splitTime),
-            pb: lstimerToSeconds(split.pbTime),
-            bestSegmentTime: lstimerToSeconds(split.bestSegmentTime),
-            segmentDelta: lstimerToSeconds(split.segmentDelta),
-            diff,
-            active: data.currentSplitIndex === idx,
-            description: desc,
-            icon: split.icon,
-            labels: split.labels ?? {},
-          };
-        });
-
-        setSplitsData(newSplitsData);
-
-        await new Promise((resolve) => setTimeout(resolve, 100));
+      if (!data) {
+        return;
       }
-    })();
+
+      const currentOrLastSplitIndex = Math.max(
+        0,
+        Math.min(data.splits.length - 1, data.currentSplitIndex),
+      );
+
+      setRunData({
+        gameTitle: data.gameTitle,
+        gameCategory: data.gameCategory,
+        gameIcon: data.gameIcon,
+        delta: lstimerToSeconds(data.splits[currentOrLastSplitIndex]?.delta),
+        columns: data.columns,
+      });
+
+      const newSplitsData = data.splits.map((split, idx) => {
+        const name = split.name.split("|")[0].trim();
+        const desc = split.name.split("|")[1]?.trim() ?? "";
+
+        const diff =
+          data.currentSplitIndex > idx ? lstimerToSeconds(split.delta) : NaN;
+
+        return {
+          id: idx,
+          name,
+          time: lstimerToSeconds(split.splitTime),
+          pb: lstimerToSeconds(split.pbTime),
+          bestSegmentTime: lstimerToSeconds(split.bestSegmentTime),
+          segmentDelta: lstimerToSeconds(split.segmentDelta),
+          diff,
+          active: data.currentSplitIndex === idx,
+          description: desc,
+          icon: split.icon,
+          labels: split.labels ?? {},
+        };
+      });
+
+      setSplitsData(newSplitsData);
+    }, 100);
   }, [client]);
 
   // Fetch run time
   useEffect(() => {
     if (!client) return;
 
-    const animationFrame = requestAnimationFrame(function updateRunTime() {
+    return setAnimationLoop(() => {
       client
         .getRunTime()
         .then((time) => {
@@ -168,69 +134,15 @@ export function App() {
           console.error("Error fetching run time:", err);
           setRunTime(null);
         });
-
-      requestAnimationFrame(updateRunTime);
     });
-
-    return () => {
-      cancelAnimationFrame(animationFrame);
-    };
   }, [client]);
 
-  // Update image hashes set
-  useEffect(() => {
-    if (runData?.gameIcon && !(runData.gameIcon in fetchStatusRef.current)) {
-      fetchStatusRef.current[runData.gameIcon] = "to_fetch";
-    }
-
-    splitsData.forEach((split) => {
-      if (split.icon && !(split.icon in fetchStatusRef.current)) {
-        fetchStatusRef.current[split.icon] = "to_fetch";
-      }
-    });
-  }, [runData, splitsData]);
-
-  // Fetch icons
-  useEffect(() => {
-    if (!client) return;
-    if (!isConnected) return;
-
-    const fetchIcons = async () => {
-      const newIconHashToB64 = new Map<string, string>();
-
-      await Promise.all(
-        Array.from(
-          Object.entries(fetchStatusRef.current).filter(
-            ([, status]) => status === "to_fetch",
-          ),
-        )
-          // .slice(0, 1)
-          .map(async ([iconHash]) => {
-            fetchStatusRef.current[iconHash] = "fetching";
-            try {
-              const b64 = await client.getIcon(iconHash);
-              if (b64) {
-                newIconHashToB64.set(iconHash, b64);
-              }
-            } catch (err) {
-              console.error(`Failed to fetch icon for hash ${iconHash}:`, err);
-            }
-          }),
-      );
-
-      setIconHashToBase64((prev) => new Map([...prev, ...newIconHashToB64]));
-    };
-
-    const interval = setInterval(fetchIcons, 5000); // Fetch icons every 5 seconds
-    setTimeout(fetchIcons, 0);
-
-    return () => {
-      clearInterval(interval);
-    };
-  }, [client, isConnected]);
+  if (!client || !runData) {
+    return null;
+  }
 
   return (
-    <>
+    <ImageProvider fetchImage={(hash) => client.getIcon(hash)}>
       <div className="h-screen p-2 flex items-center justify-center">
         <div className="w-full bg-card rounded-2xl border border-border overflow-hidden shadow-lg/50 h-full flex flex-col">
           {/* Connection Status (shows blinking red dot when not connected) */}
@@ -244,31 +156,24 @@ export function App() {
           {/* Header */}
           <div className="p-6 flex items-center gap-4 border-b border-border/50">
             <div className="h-14">
-              <IconRenderer
-                img={runData?.gameIcon && iconHashToB64.get(runData.gameIcon)}
-                preview={runData?.gameIcon}
-              />
+              {runData.gameIcon && <IconRenderer imgHash={runData.gameIcon} />}
             </div>
 
             <div className="h-14">
               <h1 className="text-xl font-semibold text-foreground">
-                {runData?.gameTitle ?? ""}
+                {runData.gameTitle ?? ""}
               </h1>
               <p className="text-muted-foreground text-sm">
-                {runData?.gameCategory ?? ""}
+                {runData.gameCategory ?? ""}
               </p>
             </div>
           </div>
 
-          <SplitsTable
-            splits={splitsData}
-            iconsMap={iconHashToB64}
-            columns={runData?.columns ?? []}
-          />
+          <SplitsTable splits={splitsData} columns={runData.columns} />
 
           <div className="relative mt-2">
             <div className="absolute inset-0 flex items-center justify-center">
-              <TimerDisplay time={runTime} diff={runData?.delta} />
+              <TimerDisplay time={runTime} diff={runData.delta} />
             </div>
 
             <TimesChart
@@ -287,6 +192,6 @@ export function App() {
           /> */}
         </div>
       </div>
-    </>
+    </ImageProvider>
   );
 }

@@ -60,6 +60,7 @@ export class LiveSplitClient {
   destroy() {
     this.ws?.close();
     this.ws = null;
+    this.handlers.clear();
   }
 
   on(event: LiveSplitEvent, handler: Handler) {
@@ -101,10 +102,12 @@ export class LiveSplitClient {
       this.sendRaw(command, { ...params, requestId })
         .then(() => {
           const timer = setTimeout(() => {
+            this.requests.delete(requestId);
             reject(new Error("Timeout"));
           }, this.timeout);
 
           this.requests.set(requestId, (data, error) => {
+            this.requests.delete(requestId);
             if (timer) {
               clearTimeout(timer);
             }
