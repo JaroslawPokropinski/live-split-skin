@@ -17,9 +17,9 @@ export interface Split {
 }
 
 const colors: Record<string, string | undefined> = {
-  BestSegment: "#D8AF1F",
-  BehindGainingTime: "#CC5C52",
-  BehindLosingTime: "#CC1200",
+  BestSegment: "var(--color-best-segment)",
+  BehindGainingTime: "var(--color-behind-gaining)",
+  BehindLosingTime: "var(--color-behind-losing)",
 };
 
 export function SplitsTable({

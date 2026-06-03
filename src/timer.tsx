@@ -35,7 +35,7 @@ export function TimerDisplay({
       {diff !== undefined && !Number.isNaN(diff) && (
         <div className="relative" data-anchor="left">
           <div
-            className={`text-3xl font-bold font-mono absolute h-full flex items-center ${diff < 0 ? "text-green-400" : "text-red-400"}`}
+            className={`text-3xl font-bold font-mono absolute h-full flex items-center ${diff < 0 ? "text-ahead" : "text-behind"}`}
           >
             <ResponsiveText
               text={`${diff > 0 ? "+" : ""}${secondsToTimeString(diff, 1)}`}

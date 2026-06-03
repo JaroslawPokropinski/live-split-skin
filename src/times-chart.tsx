@@ -1,17 +1,21 @@
 import { Chart } from "chart.js/auto";
 import { useEffect, useRef } from "preact/hooks";
 
-const DEFAULT_COLOR = { r: 99, g: 132, b: 255 };
-const DEFAULT_PB_COLOR = { r: 75, g: 192, b: 192 };
-
 /**
  * Show a chart of last 5 splits comparing PB and current run.
+ *
+ * Chart colors are driven by CSS custom properties so users can override them
+ * in their own stylesheet:
+ *   --chart-current-r / --chart-current-g / --chart-current-b  (current run line)
+ *   --chart-pb-r     / --chart-pb-g     / --chart-pb-b      (PB line)
+ *
+ * Alternatively, pass explicit `color` / `pbColor` props to override per-instance.
  */
 export function TimesChart({
   pb,
   current,
-  color = DEFAULT_COLOR,
-  pbColor = DEFAULT_PB_COLOR,
+  color: colorProp,
+  pbColor: pbColorProp,
 }: {
   pb: number[];
   current: number[];
@@ -25,13 +29,23 @@ export function TimesChart({
   useEffect(() => {
     if (!canvasRef.current) return;
 
+    const style = getComputedStyle(document.documentElement);
+    const parse = (prefix: string) => ({
+      r: parseInt(style.getPropertyValue(`--${prefix}-r`).trim()) || 0,
+      g: parseInt(style.getPropertyValue(`--${prefix}-g`).trim()) || 0,
+      b: parseInt(style.getPropertyValue(`--${prefix}-b`).trim()) || 0,
+    });
+
+    const color = colorProp ?? parse("chart-current");
+    const pbColor = pbColorProp ?? parse("chart-pb");
+
     const chart = new Chart(canvasRef.current, {
       type: "line",
       data: {
         datasets: [
           {
             fill: true,
-            label: "Current Run",
+            label: "PB",
             backgroundColor: `rgba(${pbColor.r}, ${pbColor.g}, ${pbColor.b}, 0.2)`,
             borderColor: `rgba(${pbColor.r}, ${pbColor.g}, ${pbColor.b}, 1)`,
             pointBackgroundColor: `rgba(${pbColor.r}, ${pbColor.g}, ${pbColor.b}, 1)`,
@@ -93,7 +107,7 @@ export function TimesChart({
     return () => {
       chart.destroy();
     };
-  }, [pb, color, current, pbColor.r, pbColor.g, pbColor.b, startIndex]);
+  }, [pb, colorProp, pbColorProp, current, startIndex]);
 
   return (
     <div>

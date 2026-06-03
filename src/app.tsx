@@ -72,6 +72,8 @@ export function App() {
     if (!client) return;
 
     return setSafeInterval(async () => {
+      if (!client.isConnected) return;
+
       const data = await client.getRun().catch((err) => {
         console.error("Error fetching run data:", err);
         return null;
@@ -149,7 +151,10 @@ export function App() {
           {!isConnected && (
             <div className="relative">
               <div className="absolute top-6 right-4 flex items-center gap-1 animate-pulse">
-                <div className="w-3 h-3 bg-red-500 rounded-full" />
+                <div
+                  className="w-3 h-3 rounded-full"
+                  style="background-color: var(--color-connection-lost)"
+                />
               </div>
             </div>
           )}
