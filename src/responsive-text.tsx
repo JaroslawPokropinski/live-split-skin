@@ -34,10 +34,6 @@ export function ResponsiveText({
   useEffect(() => {
     if (!preferredFontSizeRef.current) return;
 
-    console.log(
-      `Adjusting font size: preferredFontSize=${preferredFontSize}, width=${width}, textWidth=${preferredFontSizeRef.current.offsetWidth}, calculatedFontSize=${preferredFontSize * (width / preferredFontSizeRef.current.offsetWidth)}`,
-    );
-
     setFontSize(
       Math.min(
         preferredFontSize,
