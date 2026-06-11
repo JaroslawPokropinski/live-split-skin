@@ -1,3 +1,4 @@
+import { AnchoredComponent } from "./anchored-component";
 import { ResponsiveText } from "./responsive-text";
 import { secondsToTimeString } from "./utils";
 
@@ -37,9 +38,12 @@ export function TimerDisplay({
           <div
             className={`text-3xl font-bold font-mono absolute h-full flex items-center ${diff < 0 ? "text-ahead" : "text-behind"}`}
           >
-            <ResponsiveText
-              text={`${diff > 0 ? "+" : ""}${secondsToTimeString(diff, 1)}`}
-            />
+            <AnchoredComponent right="[data-anchor='right']">
+              <ResponsiveText
+                className="p-2"
+                text={`${diff > 0 ? "+" : ""}${secondsToTimeString(diff, 1)}`}
+              />
+            </AnchoredComponent>
           </div>
         </div>
       )}

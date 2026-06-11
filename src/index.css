@@ -47,8 +47,9 @@ body {
   * {
     @apply border-border;
   }
+
   body {
-    @apply bg-transparent text-foreground w-145;
+    @apply bg-transparent text-foreground w-full;
   }
 }
 
